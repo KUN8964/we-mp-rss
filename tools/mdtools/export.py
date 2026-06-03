@@ -9,6 +9,9 @@ import os
 from core.print import print_success,print_error
 from jobs.notice import sys_notice
 
+# 项目根目录：tools/mdtools/export.py -> 上三级 = 项目根
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def process_single_article(art, add_title, remove_images, remove_links, export_md, 
                           export_docx, export_json, export_csv, export_pdf, 
                           docx_path, writer):
@@ -216,7 +219,7 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
     session = DB.get_session()
     if mp_id==None:
         raise ValueError("公众号ID不能为空")
-    docx_path = f"./data/docs/{mp_id}/"
+    docx_path = os.path.join(PROJECT_ROOT, "data", "docs", mp_id, "")
     if not os.path.exists(docx_path):
         os.makedirs(docx_path)
     csv_filename = f"{docx_path}articles.csv"
@@ -254,13 +257,20 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
         print_success(f"CSV 文件已保存为 {csv_filename}")
     
     # 打包所有导出的文件为zip并删除源文件
+    print(f"[DEBUG export] PROJECT_ROOT = {PROJECT_ROOT}", flush=True)
+    print(f"[DEBUG export] docx_path = {docx_path}", flush=True)
+    print(f"[DEBUG export] record_count = {record_count}", flush=True)
     if record_count > 0:
+        # zip_filename 可能是带路径的完整文件名，也可能只是纯文件名
+        # 统一处理：如果是纯文件名则拼上 docx_path，否则直接使用
         if not zip_filename:
             zip_filename = f"{docx_path}exported_articles_{datetime.now(tz=timezone.utc).strftime('%Y%m%d_%H%M%S')}.zip"
         else:
-            zip_filename = f"{docx_path}{zip_filename}"
             if not zip_filename.endswith('.zip'):
                 zip_filename += '.zip'
+            # 如果不是绝对/相对路径形式（不含 /），则拼上 docx_path
+            if '/' not in zip_filename and '\\' not in zip_filename:
+                zip_filename = f"{docx_path}{zip_filename}"
         if zip_file==False:
             exported_files=[]
             for root, dirs, files in os.walk(docx_path):
@@ -299,3 +309,4 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
             print_error(f"打包文件失败: {e}")
     
     print_success(f"导出完成，共处理 {record_count} 篇文章")
+    return zip_filename

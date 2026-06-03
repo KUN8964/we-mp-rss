@@ -14,6 +14,13 @@ from concurrent.futures import ThreadPoolExecutor
 import io
 import uuid
 import base64
+import time
+
+# 项目根目录：apis/tools.py -> 上级 apis/ -> 上级 项目根
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 导出任务状态追踪（内存字典，服务重启后清空）
+export_tasks = {}  # task_id -> {"status": "running"|"done"|"error", "filename": ..., "filepath": ..., "error": ...}
 
 # 导入导出工具
 from tools.mdtools.export import export_md_to_doc, process_articles
@@ -101,43 +108,44 @@ async def export_articles(
             if thread.name == f"export_articles_{request.mp_id}":
                 return error_response(400, "该公众号的导出任务已在处理中，请勿重复点击")
                 
-        # 直接生成 zip_filename 并返回
+        # 直接同步调用导出函数（不用线程，因为 join() 已经是同步等待）
+        # 用函数返回值确认实际生成的文件名，避免时间戳不一致
         docx_path = f"./data/docs/{request.mp_id}/"
         if request.zip_filename:
-            zip_file_path = f"{docx_path}{request.zip_filename}"
+            zip_filename = request.zip_filename
+            if not zip_filename.endswith('.zip'):
+                zip_filename += '.zip'
         else:
-            zip_file_path = f"{docx_path}exported_articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-        
-        # 启动后台线程执行导出操作
-        export_thread = threading.Thread(
-            target=_export_articles_worker,
-            args=(
-                request.mp_id,
-                request.doc_id,
-                request.page_size,
-                request.page_count,
-                request.add_title,
-                request.remove_images,
-                request.remove_links,
-                request.export_md,
-                request.export_docx,
-                request.export_json,
-                request.export_csv,
-                request.export_pdf,
-                request.zip_filename
-            ),
-            name=f"export_articles_{request.mp_id}"
+            zip_filename = f"exported_articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+
+        actual_zip_path = _export_articles_worker(
+            request.mp_id,
+            request.doc_id,
+            request.page_size,
+            request.page_count,
+            request.add_title,
+            request.remove_images,
+            request.remove_links,
+            request.export_md,
+            request.export_docx,
+            request.export_json,
+            request.export_csv,
+            request.export_pdf,
+            zip_filename
         )
-        export_thread.start()
-        export_thread.join()  # 同步等待导出完成
+
+        # 用实际返回值确定文件名（函数返回的是完整路径或 None）
+        if actual_zip_path and os.path.isfile(actual_zip_path):
+            final_filename = os.path.basename(actual_zip_path)
+        else:
+            final_filename = zip_filename
 
         from .ver import API_VERSION
-        filename = os.path.basename(zip_file_path)
-        download_url = f"{API_VERSION}/tools/export/download?mp_id={request.mp_id}&filename={filename}"
+        download_url = f"{API_VERSION}/tools/export/download?mp_id={request.mp_id}&filename={final_filename}"
 
         return success_response({
             "download_url": download_url,
-            "filename": filename,
+            "filename": final_filename,
             "message": "导出成功，正在自动下载..."
         })
             
@@ -157,18 +165,16 @@ async def download_export_file(
     下载导出的文件
     """
     try:
-        # 定义基础目录
-        base_dir = os.path.abspath("./data/docs")
+        # 使用 PROJECT_ROOT 绝对路径，不依赖进程工作目录
+        base_dir = os.path.join(PROJECT_ROOT, "data", "docs")
 
         # 构建并规范化路径
         if mp_id:
             target_path = os.path.join(base_dir, mp_id, filename)
         else:
-            # 如果没有mp_id，可能是在根目录下或者是旧逻辑，视需求而定
-            # 这里为了安全起见，依然限制在 base_dir 下
-             target_path = os.path.join(base_dir, filename)
+            target_path = os.path.join(base_dir, filename)
 
-        # 安全加固：使用realpath解析符号链接
+        # 安全加固：使用 realpath 解析符号链接
         safe_path = os.path.realpath(os.path.normpath(target_path))
         real_base = os.path.realpath(base_dir)
 
