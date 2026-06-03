@@ -84,13 +84,24 @@ const SubmitExport = async (params: any) => {
     const result = await exportArticles(params);
     console.log('导出响应:', result);
 
-    if (result && result.download_url) {
-      const downloadUrl = result.download_url as string;
-      Message.success(result.message || '导出成功，正在下载...');
-      // 直接触发下载
-      window.open(downloadUrl, '_blank');
+    // 响应格式: { code, message, data: { download_url, filename, message } }
+    const data = result?.data;
+    if (data && data.download_url) {
+      const downloadUrl = data.download_url as string;
+      const filename = data.filename as string;
+      Message.success(data.message || '导出成功，正在下载...');
+
+      // 对文件名做 URL 编码（防止中文乱码）
+      let finalUrl = downloadUrl;
+      if (filename) {
+        const encodedName = encodeURIComponent(filename);
+        finalUrl = downloadUrl.replace(filename, encodedName);
+      }
+      window.open(finalUrl, '_blank');
+    } else if (result?.message) {
+      Message.error(result.message);
     } else {
-      Message.success(result.message || '导出成功');
+      Message.error('导出响应格式异常');
     }
   } catch (error: any) {
     console.error('导出失败:', error);

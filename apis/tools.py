@@ -134,13 +134,24 @@ async def export_articles(
             zip_filename
         )
 
-        # 用实际返回值确定文件名（函数返回的是完整路径或 None）
-        if actual_zip_path and os.path.isfile(actual_zip_path):
-            final_filename = os.path.basename(actual_zip_path)
-        else:
-            final_filename = zip_filename
+        # actual_zip_path 是 export_md_to_doc 的返回值
+        # 可能是完整路径（字符串）或 None（当 record_count==0 时）
+        print(f"[DEBUG export_articles] actual_zip_path = {actual_zip_path!r}", flush=True)
+
+        if not actual_zip_path or not os.path.isfile(actual_zip_path):
+            return error_response(500, "导出失败：未生成任何文件，请检查文章是否有内容")
+
+        final_filename = os.path.basename(actual_zip_path)
+        print(f"[DEBUG export_articles] final_filename = {final_filename!r}", flush=True)
+
+        # 对文件名做 URL 编码，避免中文乱码
+        from urllib.parse import quote
+        encoded_filename = quote(final_filename, safe='')
 
         from .ver import API_VERSION
+        # 注意：download 接口收到的 filename 需要是原始文件名（不是编码后的）
+        # 但 URL 里需要编码，所以 download_url 里用 encoded_filename
+        # 实际上 FastAPI 会自动处理 Query 参数，这里直接拼原始文件名即可
         download_url = f"{API_VERSION}/tools/export/download?mp_id={request.mp_id}&filename={final_filename}"
 
         return success_response({
