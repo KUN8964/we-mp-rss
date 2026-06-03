@@ -111,7 +111,7 @@ async def export_articles(
                 
         # 直接同步调用导出函数（不用线程，因为 join() 已经是同步等待）
         # 用函数返回值确认实际生成的文件名，避免时间戳不一致
-        docx_path = f"./data/docs/{request.mp_id}/"
+        docx_path = os.path.join(PROJECT_ROOT, "data", "docs", request.mp_id, "")
         if request.zip_filename:
             zip_filename = request.zip_filename
             if not zip_filename.endswith('.zip'):
