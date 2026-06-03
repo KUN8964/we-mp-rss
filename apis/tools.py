@@ -15,6 +15,7 @@ import io
 import uuid
 import base64
 import time
+import urllib.parse
 
 # 项目根目录：apis/tools.py -> 上级 apis/ -> 上级 项目根
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -170,31 +171,43 @@ async def download_export_file(
     filename: str = Query(..., description="文件名"),
     mp_id: Optional[str] = Query(None, description="公众号ID"),
     delete_after_download: bool = Query(False, description="下载后删除文件"),
-    # current_user: dict = Depends(get_current_user)
 ):
     """
     下载导出的文件
+    优先按 mp_id 子目录查找，找不到再尝试 base_dir 根目录
     """
     try:
-        # 使用 PROJECT_ROOT 绝对路径，不依赖进程工作目录
         base_dir = os.path.join(PROJECT_ROOT, "data", "docs")
+        base_dir = os.path.realpath(base_dir)
 
-        # 构建并规范化路径
+        # 尝试的候选路径列表（按优先级）
+        candidate_paths = []
+
         if mp_id:
-            target_path = os.path.join(base_dir, mp_id, filename)
-        else:
-            target_path = os.path.join(base_dir, filename)
+            candidate_paths.append(os.path.join(base_dir, mp_id, filename))
+            # 如果 mp_id 含中文或特殊字符，也试试 URL decode 后的版本
+            import urllib.parse
+            decoded_mp_id = urllib.parse.unquote(mp_id)
+            if decoded_mp_id != mp_id:
+                candidate_paths.append(os.path.join(base_dir, decoded_mp_id, filename))
 
-        # 安全加固：使用 realpath 解析符号链接
-        safe_path = os.path.realpath(os.path.normpath(target_path))
-        real_base = os.path.realpath(base_dir)
+        # 始终尝试根目录（处理"全部文章.zip"这类直接在 docs/ 下的文件）
+        candidate_paths.append(os.path.join(base_dir, filename))
 
-        # 检查是否尝试跳出基础目录（更严格的检查）
-        if not safe_path.startswith(real_base + os.sep) and safe_path != real_base:
-            return error_response(403, "非法的文件路径请求")
+        # 安全校验 + 查找第一个存在的文件
+        safe_path = None
+        for cand in candidate_paths:
+            cand = os.path.realpath(os.path.normpath(cand))
+            # 安全检查：不能跳出 base_dir
+            if not cand.startswith(base_dir + os.sep) and cand != base_dir:
+                continue
+            if os.path.isfile(cand):
+                safe_path = cand
+                break
 
-        if not os.path.exists(safe_path):
-             # 避免泄露文件存在信息，或者直接报404
+        if not safe_path:
+            # 打日志方便排查
+            print(f"[DEBUG download] 文件不存在，已尝试路径: {candidate_paths}", flush=True)
             raise HTTPException(status_code=404, detail="文件不存在")
 
         # 再次确认是文件而不是目录
@@ -229,48 +242,48 @@ async def list_export_files(
     获取指定公众号的导出文件列表
     """
     try:
-        from .ver import API_VERSION
-        safe_root = os.path.abspath(os.path.normpath("./data/docs"))
-        # Ensure mp_id is not None or empty
-       
-        export_path = os.path.abspath(os.path.join(safe_root, mp_id))
-        # Validate that export_path is within safe_root
-        if not export_path.startswith(safe_root):
-            return success_response([])
-        if not os.path.exists(export_path):
-            return success_response([])
-        # Check directory permissions
-        if not os.access(export_path, os.R_OK):
-            return error_response(403, "无权限访问该目录")
+        base_dir = os.path.join(PROJECT_ROOT, "data", "docs")
+        base_dir = os.path.realpath(base_dir)
+
+        # 收集所有候选目录
+        scan_dirs = [base_dir]
+        if mp_id:
+            scan_dirs.append(os.path.join(base_dir, mp_id))
+            # 尝试 URL decode
+            import urllib.parse
+            decoded = urllib.parse.unquote(mp_id)
+            if decoded != mp_id:
+                d = os.path.join(base_dir, decoded)
+                if os.path.isdir(d):
+                    scan_dirs.append(d)
+
         files = []
-        for root, _, filenames in os.walk(export_path):
-            # Ensure root is also within safe_root, in case of symlinks or traversal
-            root_norm = os.path.abspath(root)
-            if not root_norm.startswith(safe_root):
+        for scan_dir in scan_dirs:
+            scan_dir = os.path.realpath(scan_dir)
+            if not scan_dir.startswith(base_dir):
                 continue
-            for filename in filenames:
-                if filename.endswith('.zip'):
-                    file_path = os.path.join(root, filename)
-                    try:
-                        file_stat = os.stat(file_path)
-                        file_path = os.path.relpath(file_path, export_path)
-                        files.append({
-                        "filename": filename,
-                        "size": file_stat.st_size,
-                        "created_time": datetime.fromtimestamp(file_stat.st_ctime).isoformat(),
-                        "modified_time": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
-                        "path": file_path,
-                        "download_url": f"{API_VERSION}/tools/export/download?mp_id={mp_id}&filename={file_path}"  # 下载链接
-                    })
-                    except PermissionError:
+            if not os.path.isdir(scan_dir) or not os.access(scan_dir, os.R_OK):
+                continue
+            for fname in os.listdir(scan_dir):
+                if fname.endswith('.zip'):
+                    fpath = os.path.join(scan_dir, fname)
+                    if not os.path.isfile(fpath):
                         continue
-               
-        
-        # 按修改时间倒序排列
+                    try:
+                        st = os.stat(fpath)
+                        files.append({
+                            "filename": fname,
+                            "size": st.st_size,
+                            "created_time": datetime.fromtimestamp(st.st_ctime).isoformat(),
+                            "modified_time": datetime.fromtimestamp(st.st_mtime).isoformat(),
+                        })
+                    except Exception:
+                        pass
+
+        # 按修改时间倒序
         files.sort(key=lambda x: x["modified_time"], reverse=True)
-        
         return success_response(files)
-        
+
     except Exception as e:
         return error_response(500, f"获取文件列表失败: {str(e)}")
 
@@ -290,17 +303,30 @@ async def delete_export_file(
     """
     try:
         # 参数验证
-        if not request.filename :
+        if not request.filename:
             return error_response(400, "文件名和公众号ID不能为空")
         
-        # 构建文件路径并做路径归一化及安全检测
-        base_path = os.path.realpath(f"./data/docs/{request.mp_id}/")
-        unsafe_path = os.path.join(base_path, request.filename)
-        safe_path = os.path.realpath(os.path.normpath(unsafe_path))
-        
-        # 安全检查：确保文件在指定目录内，防止路径遍历攻击
-        if not safe_path.startswith(base_path):
-            return error_response(403, "无权限删除该文件")
+        # 构建文件路径（使用 PROJECT_ROOT 绝对路径）
+        base_dir = os.path.join(PROJECT_ROOT, "data", "docs")
+        base_dir = os.path.realpath(base_dir)
+
+        # 候选路径：mp_id 子目录 + 根目录
+        candidate_paths = []
+        if request.mp_id:
+            candidate_paths.append(os.path.join(base_dir, request.mp_id, request.filename))
+        candidate_paths.append(os.path.join(base_dir, request.filename))
+
+        safe_path = None
+        for cand in candidate_paths:
+            cand = os.path.realpath(os.path.normpath(cand))
+            if not cand.startswith(base_dir + os.sep) and cand != base_dir:
+                continue
+            if os.path.isfile(cand):
+                safe_path = cand
+                break
+
+        if not safe_path:
+            return error_response(404, "文件不存在")
         
         # 只允许删除.zip文件
         if not request.filename.endswith('.zip'):
