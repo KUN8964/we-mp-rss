@@ -343,7 +343,7 @@ async def get_featured_article_task_status(
 async def update_mps(
      mp_id: str,
      start_page: int = 0,
-     end_page: int = 1,
+     end_page: int = 20,
     current_user: dict = Depends(get_current_user_or_ak)
 ):
     session = DB.get_session()
@@ -495,8 +495,19 @@ async def add_mp(
         if not existing_feed:
             from core.queue import TaskQueue
             from core.wx import WxGather
-            Max_page=int(cfg.get("max_page","2"))
-            TaskQueue.add_task(WxGather().Model().get_Articles, faker_id=feed.faker_id, Mps_id=feed.id, CallBack=UpdateArticle, MaxPage=Max_page, Mps_title=mp_name, task_name=mp_name)
+            # 全量下载：MaxPage=0 表示不限制页数，一直抓到微信返回空
+            # interval 调大为 20-40 秒随机延迟，规避反爬
+            TaskQueue.add_task(
+                WxGather().Model().get_Articles,
+                faker_id=feed.faker_id,
+                Mps_id=feed.id,
+                CallBack=UpdateArticle,
+                MaxPage=0,
+                Mps_title=mp_name,
+                task_name=mp_name,
+                interval=20,
+                Gather_Content=False
+            )
             
         return success_response({
             "id": feed.id,

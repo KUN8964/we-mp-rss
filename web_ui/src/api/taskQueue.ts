@@ -20,6 +20,9 @@ export interface CurrentTask {
   task_name: string;
   start_time: string;
   status: string;
+  progress_current?: number;
+  progress_total?: number;
+  progress_msg?: string;
 }
 
 export interface QueueStatus {

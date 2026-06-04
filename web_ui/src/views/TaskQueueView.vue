@@ -65,6 +65,19 @@
                   <span>{{ mainQueueStatus.current_task.start_time }}</span>
                   <a-tag color="blue" size="small">{{ mainQueueStatus.current_task.status }}</a-tag>
                 </div>
+                <!-- 进度展示 -->
+                <div v-if="mainQueueStatus.current_task.progress_msg" class="task-progress">
+                  <div class="progress-msg">{{ mainQueueStatus.current_task.progress_msg }}</div>
+                  <a-progress
+                    v-if="mainQueueStatus.current_task.progress_total > 0"
+                    :percent="Math.round(mainQueueStatus.current_task.progress_current / mainQueueStatus.current_task.progress_total * 100)"
+                    size="small"
+                    style="margin-top: 4px"
+                  />
+                  <div v-else class="progress-count">
+                    {{ mainQueueStatus.current_task.progress_current || 0 }} 页已处理
+                  </div>
+                </div>
               </div>
               <div v-else class="no-task">
                 <icon-pause-circle style="font-size: 18px; color: #c9cdd4" />
@@ -647,6 +660,25 @@ onUnmounted(() => {
   color: var(--color-text-3);
   font-size: 12px;
   padding: 4px 0;
+}
+
+/* 进度展示 */
+.task-progress {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: var(--color-fill-2);
+  border-radius: 4px;
+}
+
+.progress-msg {
+  font-size: 12px;
+  color: var(--color-text-2);
+  margin-bottom: 4px;
+}
+
+.progress-count {
+  font-size: 12px;
+  color: var(--color-text-3);
 }
 
 /* 待执行任务 */

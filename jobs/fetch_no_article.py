@@ -21,6 +21,17 @@ def fetch_articles_without_content():
             or_(Article.fix_fail_count.is_(None), Article.fix_fail_count < 3)  # 排除失败3次及以上的文章
         ).order_by(Article.publish_time.desc()).limit(10).all()
         
+        # 定期重置失败计数（每 50 次执行一次重置，让长期失败的文章有重试机会）
+        import random
+        if random.randint(1, 50) == 1:
+            reset_cnt = session.query(Article).filter(
+                Article.fix_fail_count >= 3,
+                Article.status != DATA_STATUS.DELETED,
+            ).update({Article.fix_fail_count: 0}, synchronize_session=False)
+            session.commit()
+            if reset_cnt:
+                print_warning(f"定期重置了 {reset_cnt} 篇文章的失败计数，给予重试机会")
+        
         if not articles:
             print_warning("暂无需要获取内容的文章")
             return

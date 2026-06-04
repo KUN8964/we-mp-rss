@@ -31,7 +31,7 @@ class MpsAppMsg(WxGather):
         print(f"APP浏览器模式,是否采集[{Mps_title}]内容：{Gather_Content}\n")
         # 请求参数
         url = "https://mp.weixin.qq.com/cgi-bin/appmsgpublish"
-        count=5
+        count=10
         params = {
         "sub": "list",
         "sub_action": "list_ex",
@@ -48,7 +48,8 @@ class MpsAppMsg(WxGather):
         # 起始页数
         i = start_page
         while True:
-            if i >= MaxPage:
+            # MaxPage <= 0 表示不限制，一直抓到微信返回空
+            if MaxPage > 0 and i >= MaxPage:
                 break
             begin = i * count
             params["begin"] = str(begin)

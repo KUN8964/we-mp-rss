@@ -55,28 +55,29 @@ def _fetch_with_api(url: str) -> Tuple[str, Any]:
     return (fetcher.content_extract(url) or "").strip(),{}
 
 
-def fetch_article_content(url: str, preferred_mode: str | None = None) -> Tuple[str, str,str]:
+def fetch_article_content(url: str, preferred_mode: str | None = None) -> Tuple[str, str, str, str]:
     mode = normalize_content_mode(preferred_mode)
     modes = [mode] + [item for item in ("web", "api") if item != mode]
 
     for current_mode in modes:
         try:
             if current_mode == "api":
-                content,result = _fetch_with_api(url)
+                content, result = _fetch_with_api(url)
             else:
-                content,result = _fetch_with_web(url)
+                content, result = _fetch_with_web(url)
             print(result)
             article_type = result.get("article_type", "")
+            fetch_error = result.get("fetch_error", "")
         except Exception as exc:
             print_warning(f"fetch article content failed in {current_mode} mode: {exc}")
             continue
 
         if content == "DELETED":
-            return content, current_mode,article_type
+            return content, current_mode, article_type, fetch_error
         if content:
-            return content, current_mode,article_type
+            return content, current_mode, article_type, ""
 
-    return "", mode,article_type
+    return "", mode, article_type, ""
 
 
 def sync_article_content(
@@ -100,19 +101,32 @@ def sync_article_content(
         print_warning(f"article {getattr(article, 'id', '')} has no valid url")
         return False, "missing_url"
 
-    content, mode, article_type = fetch_article_content(article_url, preferred_mode)
+    content, mode, article_type, fetch_error = fetch_article_content(article_url, preferred_mode)
     if not content:
         return False, mode
 
     try:
         if content == "DELETED":
-            article.content = ""
-            article.content_html = ""
-            article.status = DATA_STATUS.DELETED
-            article.has_content = 0
-            session.commit()
-            session.refresh(article)
-            print_info(f"article {article.id} marked as deleted via {mode}")
+            # 区分"真的被删除"和"临时抓取失败"
+            real_deleted = any(
+                kw in (fetch_error or "")
+                for kw in ["已被发布者删除", "内容审核中"]
+            )
+            if real_deleted:
+                article.content = ""
+                article.content_html = ""
+                article.status = DATA_STATUS.DELETED
+                article.has_content = 0
+                session.commit()
+                session.refresh(article)
+                print_info(f"article {article.id} marked as DELETED (real) via {mode}")
+            else:
+                # 临时错误（反爬/限流/网络），只记录，不标记删除
+                article.has_content = 0
+                if hasattr(article, 'fetch_error'):
+                    setattr(article, 'fetch_error', (fetch_error or "")[:500])
+                session.commit()
+                print_warning(f"article {article.id} fetch failed (temp error: {fetch_error}), not deleted")
             return True, mode
 
         from driver.wxarticle import Web

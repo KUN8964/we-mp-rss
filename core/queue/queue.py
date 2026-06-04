@@ -124,6 +124,10 @@ class TaskRecord:
     duration: Optional[float] = None
     status: str = "running"  # running, completed, failed
     error: Optional[str] = None
+    # 进度信息（用于长时间任务展示进度）
+    progress_current: int = 0   # 当前已处理数量
+    progress_total: int = 0      # 总数量（0表示未知）
+    progress_msg: str = ""       # 进度描述文字，如"正在抓取第3页"
     
     def to_dict(self) -> dict:
         return {
@@ -132,7 +136,10 @@ class TaskRecord:
             'end_time': self.end_time or '',
             'duration': self.duration or 0,
             'status': self.status,
-            'error': self.error or ''
+            'error': self.error or '',
+            'progress_current': self.progress_current,
+            'progress_total': self.progress_total,
+            'progress_msg': self.progress_msg
         }
 
 
@@ -252,16 +259,23 @@ class TaskQueueManager:
             return []
     
     def _get_current_task_from_redis(self) -> Optional[dict]:
-        """从 Redis 获取当前任务"""
+        """从 Redis 获取当前任务（自动转换类型）"""
         redis_client = _get_redis()
         if not redis_client:
             return None
         
         try:
             data = redis_client.hgetall(self._redis_keys['current'])
-            if data and 'task_name' in data:
-                return data
-            return None
+            if not data or 'task_name' not in data:
+                return None
+            # Redis 存储时所有值都是字符串，需要转换类型
+            for int_key in ['progress_current', 'progress_total', 'duration']:
+                if int_key in data and data[int_key]:
+                    try:
+                        data[int_key] = int(data[int_key])
+                    except (ValueError, TypeError):
+                        data[int_key] = 0
+            return data
         except Exception as e:
             print_error(f"从 Redis 获取当前任务失败: {e}")
             return None
@@ -523,6 +537,20 @@ class TaskQueueManager:
             # 清理可能残留的资源
             gc.collect()
     
+    def update_current_progress(self, current: int, total: int = 0, msg: str = "") -> None:
+        """由任务函数调用，更新当前任务的进度（线程安全）"""
+        with self._thread_lock:
+            if self._current_task:
+                self._current_task.progress_current = current
+                self._current_task.progress_total = total
+                self._current_task.progress_msg = msg
+                self._save_current_task_to_redis(self._current_task)
+        # 广播进度更新（锁外，避免阻塞）
+        try:
+            _broadcast_queue_status()
+        except Exception:
+            pass
+
     def stop(self) -> None:
         """停止任务执行"""
         with self._thread_lock:

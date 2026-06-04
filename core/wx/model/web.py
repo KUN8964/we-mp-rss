@@ -24,14 +24,14 @@ class MpsWeb(WxGather):
             logger.error(e)
         return ""
     # 重写 get_Articles 方法
-    def get_Articles(self, faker_id:str='',Mps_id:str='',Mps_title="",CallBack=None,start_page:int=0,MaxPage:int=1,interval=10,Gather_Content=False,Item_Over_CallBack=None,Over_CallBack=None):
+    def get_Articles(self, faker_id:str='',Mps_id:str='',Mps_title="",CallBack=None,start_page:int=0,MaxPage:int=1,interval=10,Gather_Content=False,Item_Over_CallBack=None,Over_CallBack=None,progress_callback=None):
         super().Start(mp_id=Mps_id)
         if self.Gather_Content:
             Gather_Content=True
         print(f"Web浏览器模式,是否采集[{Mps_title}]内容：{Gather_Content}\n")
         # 请求参数
         url = "https://mp.weixin.qq.com/cgi-bin/appmsgpublish"
-        count=5
+        count=10
         params = {
         "sub": "list",
         "sub_action": "list_ex",
@@ -48,7 +48,8 @@ class MpsWeb(WxGather):
         # 起始页数
         i = start_page
         while True:
-            if i >= MaxPage:
+            # MaxPage <= 0 表示不限制，一直抓到微信返回空
+            if MaxPage > 0 and i >= MaxPage:
                 break
             begin = i * count
             params["begin"] = str(begin)
@@ -93,7 +94,7 @@ class MpsWeb(WxGather):
                     for item in msg["publish_page"]['publish_list']:
                         if "publish_info" in item:
                             publish_info= json.loads(item['publish_info'])
-                       
+                        
                             if "appmsgex" in publish_info:
                                 # info = '"{}","{}","{}","{}"'.format(str(item["aid"]), item['title'], item['link'], str(item['create_time']))
                                 for item in publish_info["appmsgex"]:
@@ -108,7 +109,15 @@ class MpsWeb(WxGather):
                                     item["mp_id"] = Mps_id
                                     if CallBack is not None:
                                         super().FillBack(CallBack=CallBack,data=item,Ext_Data={"mp_title":Mps_title,"mp_id":Mps_id})
-                    print(f"第{i+1}页爬取成功\n")
+                    print(f"第{i+1}页爬取成功，本页共 {len(msg.get('publish_page',{}).get('publish_list',[]))} 条文章\n")
+                    # 进度回调：更新 TaskQueue 当前任务进度（懒导入，避免循环依赖）
+                    try:
+                        from core.queue.queue import TaskQueue
+                        # MaxPage<=0 表示全量（未知总数），total 传 0
+                        total = MaxPage if MaxPage > 0 else 0
+                        TaskQueue.update_current_progress(current=i+1, total=total, msg=f"已抓取第{i+1}页，共 {len(msg.get('publish_page',{}).get('publish_list',[]))} 条")
+                    except Exception as e:
+                        print(f"进度更新失败: {e}")
                 # 翻页
                 i += 1
             except requests.exceptions.Timeout:

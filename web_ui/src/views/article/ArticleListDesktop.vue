@@ -247,8 +247,8 @@
               <a-form-item label="起始页" field="startPage">
                 <a-input-number v-model="refreshForm.startPage" :min="1" />
               </a-form-item>
-              <a-form-item label="结束页" field="endPage">
-                <a-input-number v-model="refreshForm.endPage" :min="1" />
+              <a-form-item label="结束页" field="endPage" help="填 0 表示不限制，一直抓到没有新文章为止">
+                <a-input-number v-model="refreshForm.endPage" :min="0" />
               </a-form-item>
             </a-form>
             <template #footer>
@@ -1059,7 +1059,7 @@ const handleCleanOldArticles = async () => {
 const refreshModalVisible = ref(false)
 const refreshForm = ref({
   startPage: 0,
-  endPage: 1
+  endPage: 0  // 0 表示不限制页数，一直抓到完
 })
 const refreshRules = {
   startPage: [{ required: true, message: '请输入开始页码' }],

@@ -187,7 +187,7 @@ async def get_mp_articles_source(
     feed_id: str=None,
     tag_id:str=None,
     ext:str="xml",
-    limit: int = Query(10, ge=1, le=100),
+    limit: int = Query(30, ge=1, le=100),
     offset: int = Query(0, ge=0),
     kw:str="",
     is_update:bool=True,
