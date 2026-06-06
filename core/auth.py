@@ -71,6 +71,10 @@ SECRET_KEY = _load_or_generate_secret_key()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(cfg.get("token_expire_minutes",30))
 
+# 免登录模式：设为 True 时，所有 API 自动以 admin 身份访问，无需 token
+# 强制设为 True 进行测试，后续可通过配置文件控制
+NO_AUTH = True  # cfg.get("no_auth", False)
+
 class PasswordHasher:
     """自定义密码哈希器，替代passlib的CryptContext"""
     
@@ -295,7 +299,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """获取当前用户"""
+    """获取当前用户（免登录模式下直接返回 admin）"""
+    if NO_AUTH:
+        return {
+            "username": "admin",
+            "role": "admin",
+            "permissions": ["admin"],
+            "original_user": None,
+            "auth_type": "no_auth"
+        }
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -491,7 +503,19 @@ async def get_current_user_or_ak(request: Request, token: str = Depends(oauth2_s
     优先级:
     1. Authorization 头中的 AK/SK (格式: "AK-SK ak_value:sk_value") - 用户AK或级联节点AK
     2. Bearer Token (JWT)
+    
+    免登录模式 (no_auth=True): 直接返回默认 admin 用户，跳过所有认证
     """
+    # 免登录模式：直接返回默认管理员用户
+    if NO_AUTH:
+        return {
+            "username": "admin",
+            "role": "admin",
+            "permissions": ["admin"],
+            "original_user": None,
+            "auth_type": "no_auth"
+        }
+    
     # 检查 AK/SK 认证
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("AK-SK "):

@@ -34,8 +34,8 @@ http.interceptors.response.use(
       return response.data?.data||response.data?.detail||response.data||response
     }
     if(response.data?.code==401){
-      router.push("/login")
-      return Promise.reject("未登录或登录已过期，请重新登录。")
+      // 免登录模式下不再跳转到登录页
+      return Promise.reject("未登录或登录已过期。")
     }
     const data=response.data?.detail||response.data
     const errorMsg = data?.message || '请求失败'
@@ -47,8 +47,9 @@ http.interceptors.response.use(
     return Promise.reject(response.data)
   },
   error => {
-     if(error.response?.status==401){
-      router.push("/login")
+    // 免登录模式下不再跳转到登录页
+    if(error.response?.status==401){
+      return Promise.reject("未登录或登录已过期。")
     }
     // console.log(error)
     // 统一错误处理

@@ -119,7 +119,7 @@ async def export_articles(
         else:
             zip_filename = f"exported_articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
 
-        actual_zip_path = _export_articles_worker(
+        result = _export_articles_worker(
             request.mp_id,
             request.doc_id,
             request.page_size,
@@ -135,15 +135,36 @@ async def export_articles(
             zip_filename
         )
 
-        # actual_zip_path 是 export_md_to_doc 的返回值
-        # 可能是完整路径（字符串）或 None（当 record_count==0 时）
+        # result 现在是 (zip_filename, record_count, skipped_count) 或 (None, 0, skipped_count)
+        if isinstance(result, tuple):
+            actual_zip_path, record_count, skipped_count = result
+        else:
+            actual_zip_path = result
+            record_count = 0
+            skipped_count = 0
+
+        # actual_zip_path 是 export_md_to_doc 的返回值（zip 文件路径或 None）
         print(f"[DEBUG export_articles] actual_zip_path = {actual_zip_path!r}", flush=True)
+        print(f"[DEBUG export_articles] record_count = {record_count}, skipped_count = {skipped_count}", flush=True)
 
         if not actual_zip_path or not os.path.isfile(actual_zip_path):
-            return error_response(500, "导出失败：未生成任何文件，请检查文章是否有内容")
+            # 构建详细错误消息
+            total_requested = len(request.doc_id) if request.doc_id else "未知"
+            error_msg = f"导出失败：未生成任何文件。请求导出 {total_requested} 篇，实际导出 0 篇"
+            if skipped_count > 0:
+                error_msg += f"，已跳过 {skipped_count} 篇（无内容或状态异常）"
+            error_msg += "。请检查文章是否有内容。"
+            return error_response(500, error_msg)
 
         final_filename = os.path.basename(actual_zip_path)
         print(f"[DEBUG export_articles] final_filename = {final_filename!r}", flush=True)
+
+        # 构建成功消息
+        total_requested = len(request.doc_id) if request.doc_id else "全部"
+        success_msg = f"导出成功 {record_count} 篇"
+        if skipped_count > 0:
+            success_msg += f"，跳过 {skipped_count} 篇（无内容）"
+        success_msg += "，正在自动下载..."
 
         # 对文件名做 URL 编码，避免中文乱码
         from urllib.parse import quote
@@ -158,7 +179,9 @@ async def export_articles(
         return success_response({
             "download_url": download_url,
             "filename": final_filename,
-            "message": "导出成功，正在自动下载..."
+            "record_count": record_count,
+            "skipped_count": skipped_count,
+            "message": success_msg
         })
             
     except ValueError as e:

@@ -135,7 +135,12 @@ async def serve_vue_app(request: Request, path: str):
     # 返回Vue入口文件
     index_path = os.path.join("static", "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        response = FileResponse(index_path)
+        # 禁用浏览器缓存，确保每次都获取最新的 index.html
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
     
     return {"error": "Not Found"}, 404
 

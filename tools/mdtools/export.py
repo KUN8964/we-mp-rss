@@ -232,6 +232,9 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
         writer = csv.writer(csv_file)
         writer.writerow(["标题", "链接", "发布时间"])
     
+    # 统计信息
+    total_requested = len(doc_id) if doc_id else None  # 用户请求导出数量
+    
     # 调用独立的文章处理函数
     record_count = process_articles(
         session=session,
@@ -260,6 +263,14 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
     print(f"[DEBUG export] PROJECT_ROOT = {PROJECT_ROOT}", flush=True)
     print(f"[DEBUG export] docx_path = {docx_path}", flush=True)
     print(f"[DEBUG export] record_count = {record_count}", flush=True)
+    
+    # 计算跳过数量
+    skipped_count = 0
+    if total_requested is not None:
+        skipped_count = max(0, total_requested - record_count)
+        if skipped_count > 0:
+            print(f"[DEBUG export] 跳过 {skipped_count} 篇无内容的文章", flush=True)
+    
     if record_count > 0:
         # zip_filename 可能是带路径的完整文件名，也可能只是纯文件名
         # 统一处理：如果是纯文件名则拼上 docx_path，否则直接使用
@@ -304,9 +315,12 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
             # 发送系统通知，包含下载链接
             download_link = domain + docx_path + zip_filename.split('/')[-1]
             print_success(f"转换完成{download_link}")
-            sys_notice(f"文章导出完成！共处理 {record_count} 篇文章。下载链接: [点击下载]({download_link})")
+            
+            # 返回 (zip_filename, record_count, skipped_count)
+            return (zip_filename, record_count, skipped_count)
+            
         except Exception as e:
             print_error(f"打包文件失败: {e}")
     
     print_success(f"导出完成，共处理 {record_count} 篇文章")
-    return zip_filename
+    return (None, record_count, skipped_count)

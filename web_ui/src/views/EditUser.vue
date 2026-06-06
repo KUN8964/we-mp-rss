@@ -161,7 +161,9 @@ const fetchUserInfo = async () => {
       avatar: res.avatar 
     }
   } catch (error) {
-    router.push('/login')
+    console.error('获取用户信息失败:', error)
+    // 免登录模式下不跳转登录页
+    Message.error('获取用户信息失败')
   } finally {
     loading.value = false
   }

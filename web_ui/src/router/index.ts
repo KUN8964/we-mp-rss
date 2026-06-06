@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import BasicLayout from '../components/Layout/BasicLayout.vue'
 import ExportRecords from '../views/ExportRecords.vue'
-import Login from '../views/Login.vue'
 import ArticleList from '../views/ArticleList.vue'
 import ChangePassword from '../views/ChangePassword.vue'
 import EditUser from '../views/EditUser.vue'
@@ -15,7 +14,6 @@ import NovelReader from '../views/NovelReader.vue'
 import FilterRuleList from '../views/FilterRuleList.vue'
 import FilterRuleForm from '../views/FilterRuleForm.vue'
 import TaskQueueView from '../views/TaskQueueView.vue'
-import ForgotPassword from '../views/ForgotPassword.vue'
 
 const routes = [
   {
@@ -26,32 +24,27 @@ const routes = [
         path: '',
         name: 'Home',
         component: ArticleList,
-        meta: { requiresAuth: true }
       },
       {
         path: 'change-password',
         name: 'ChangePassword',
         component: ChangePassword,
-        meta: { requiresAuth: true }
       },
       {
         path: 'edit-user',
         name: 'EditUser',
         component: EditUser,
-        meta: { requiresAuth: true }
       },
       {
         path: 'add-subscription',
         name: 'AddSubscription',
         component: AddSubscription,
-        meta: { requiresAuth: true }
       },
       {
         path: 'wechat/mp',
         name: 'WeChatMpManagement',
         component: WeChatMpManagement,
         meta: { 
-          requiresAuth: true,
           permissions: ['wechat:manage'] 
         }
       },
@@ -61,7 +54,6 @@ const routes = [
         name: 'ConfigList',
         component: ConfigList,
         meta: { 
-          requiresAuth: true,
           permissions: ['config:view'] 
         }
       },
@@ -70,7 +62,6 @@ const routes = [
         name: 'ExportList',
         component: ExportRecords,
         meta: { 
-          requiresAuth: true,
           permissions: ['config:view'] 
         }
       },
@@ -80,7 +71,6 @@ const routes = [
         component: ConfigDetail,
         props: true,
         meta: { 
-          requiresAuth: true,
           permissions: ['config:view'] 
         }
       },
@@ -89,7 +79,6 @@ const routes = [
         name: 'MessageTaskList',
         component: MessageTaskList,
         meta: { 
-          requiresAuth: true,
           permissions: ['message_task:view'] 
         }
       },
@@ -98,7 +87,6 @@ const routes = [
         name: 'MessageTaskAdd',
         component: MessageTaskForm,
         meta: { 
-          requiresAuth: true,
           permissions: ['message_task:edit'] 
         }
       },
@@ -108,7 +96,6 @@ const routes = [
         component: MessageTaskForm,
         props: true,
         meta: { 
-          requiresAuth: true,
           permissions: ['message_task:edit'] 
         }
       },
@@ -117,7 +104,6 @@ const routes = [
         name: 'SysInfo',
         component: () => import('@/views/SysInfo.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['admin'] 
         }
       },
@@ -126,7 +112,6 @@ const routes = [
         name: 'TagList',
         component: () => import('@/views/TagList.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['tag:view'] 
         }
       },
@@ -135,7 +120,6 @@ const routes = [
         name: 'TagAdd',
         component: () => import('@/views/TagForm.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['tag:edit'] 
         }
       },
@@ -145,7 +129,6 @@ const routes = [
         component: () => import('@/views/TagForm.vue'),
         props: true,
         meta: { 
-          requiresAuth: true,
           permissions: ['tag:edit'] 
         }
       },
@@ -154,7 +137,6 @@ const routes = [
         name: 'AccessKeyManagement',
         component: () => import('@/views/AccessKeyManagement.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['admin'] 
         }
       },
@@ -163,7 +145,6 @@ const routes = [
         name: 'CascadeManagement',
         component: () => import('@/views/CascadeManagement.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['admin'] 
         }
       },
@@ -172,7 +153,6 @@ const routes = [
         name: 'CascadeFeedStatus',
         component: () => import('@/views/CascadeFeedStatus.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['admin'] 
         }
       },
@@ -181,7 +161,6 @@ const routes = [
         name: 'EnvExceptionStats',
         component: () => import('@/views/EnvExceptionStats.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['admin'] 
         }
       },
@@ -190,7 +169,6 @@ const routes = [
         name: 'FilterRuleList',
         component: FilterRuleList,
         meta: { 
-          requiresAuth: true,
           permissions: ['wechat:manage'] 
         }
       },
@@ -199,7 +177,6 @@ const routes = [
         name: 'FilterRuleAdd',
         component: FilterRuleForm,
         meta: { 
-          requiresAuth: true,
           permissions: ['wechat:manage'] 
         }
       },
@@ -209,7 +186,6 @@ const routes = [
         component: FilterRuleForm,
         props: true,
         meta: { 
-          requiresAuth: true,
           permissions: ['wechat:manage'] 
         }
       },
@@ -218,7 +194,6 @@ const routes = [
         name: 'TaskQueue',
         component: TaskQueueView,
         meta: { 
-          requiresAuth: true,
           permissions: ['admin'] 
         }
       },
@@ -227,7 +202,6 @@ const routes = [
         name: 'WechatStatus',
         component: () => import('@/views/WechatStatus.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['wechat:manage'] 
         }
       },
@@ -236,7 +210,6 @@ const routes = [
         name: 'UserManagement',
         component: () => import('@/views/UserManagement.vue'),
         meta: { 
-          requiresAuth: true,
           permissions: ['admin'] 
         }
       },
@@ -244,19 +217,16 @@ const routes = [
   },
   {
     path: '/login',
-    name: 'Login',
-    component: Login
+    redirect: '/'
   },
   {
     path: '/forgot-password',
-    name: 'ForgotPassword',
-    component: ForgotPassword
+    redirect: '/'
   },
   {
         path: '/reader',
         name: 'NovelReader',
         component: NovelReader,
-        meta: { requiresAuth: true }
   },
 ]
 
@@ -265,40 +235,9 @@ const router = createRouter({
   routes
 })
 
+// 免登录模式：直接放行所有路由
 router.beforeEach(async (to, from, next) => {
-  // 不需要认证的路由直接放行
-  if (!to.meta.requiresAuth) {
-    return next()
-  }
-
-  const token = localStorage.getItem('token')
-  
-  // 未登录则跳转登录页
-  if (!token) {
-    return next({
-      path: '/login',
-      query: { redirect: to.fullPath } // 保存目标路由用于登录后跳转
-    })
-  }
-
-  // 已登录状态，验证token有效性
-  try {
-    // 确保从正确路径导入verifyToken
-    const { verifyToken } = await import('@/api/auth')
-    await verifyToken()
-    next()
-  } catch (error) {
-    console.error('Token验证失败:', error)
-    // token无效时清除并跳转登录
-    localStorage.removeItem('token')
-    next({
-      path: '/login',
-      query: { 
-        redirect: to.fullPath,
-        error: 'session_expired'
-      }
-    })
-  }
+  next()
 })
 
 export default router

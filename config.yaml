@@ -102,6 +102,10 @@ rss:
 #登录会话有效时长 单位分钟 默认4320分钟 3天
 token_expire_minutes: ${TOKEN_EXPIRE_MINUTES:-4320}
 
+# 免登录模式：设为 true 时，前端无需登录，后端自动以 admin 身份处理所有请求
+# 仅限个人/内网使用，生产环境请设为 false
+no_auth: true
+
 cache:
   #缓存目录，默认为./data/cache
   dir: ${CACHE.DIR:-./data/cache}
@@ -128,9 +132,10 @@ gather:
   #采集模式，web模式（可采集到发布链接)，api模式（可采集临时链接），app模式（采集最新消息）
   model: ${GATHER.MODEL:-web}
   #是否自动检查未采集文章内容，默认False
-  content_auto_check: ${GATHER.CONTENT_AUTO_CHECK:-True}
+  # 是否自动检查并同步未采集的文章内容 默认True
+  content_auto_check: true
   #自动检查未采集文章内容的时间间隔 单位秒默认59分钟 允许值 1-59分钟之间 默认59分钟
-  content_auto_interval: ${GATHER.CONTENT_AUTO_INTERVAL:-59}
+  content_auto_interval: 10
   #内容修正模式，默认web 允许值 web、api
   content_mode: ${GATHER.CONTENT_MODE:-web}
   #是否清理html标签 默认True 

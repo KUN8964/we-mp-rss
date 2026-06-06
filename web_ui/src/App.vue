@@ -300,8 +300,9 @@ const hasLogined = ref(false)
 const wxLoginInfo = ref<any>(null)
 const wxAccountVisible = ref(false)
 const isAuthenticated = computed(() => {
-  hasLogined.value = !!localStorage.getItem('token')
-  return hasLogined.value
+  // 免登录模式：始终视为已登录
+  hasLogined.value = true
+  return true
 })
 
 const fetchUserInfo = async () => {
@@ -354,17 +355,16 @@ const handleLogout = async () => {
   try {
     await logout()
     localStorage.removeItem('token')
-    router.push('/login')
+    // 免登录模式下不跳转登录页，直接刷新页面
+    window.location.reload()
   } catch (error) {
     Message.error('退出登录失败')
   }
 }
 
 onMounted(() => {
- 
-  if (isAuthenticated.value) {
-    fetchUserInfo()
-  }
+  // 免登录模式：跳过 token 检查，直接获取用户信息
+  fetchUserInfo()
   initBrowserNotification()
   translatePage();
   fetchSysInfo();
@@ -374,10 +374,8 @@ import { translatePage, setCurrentLanguage } from '@/utils/translate';
 watch(
   () => route.path,
   () => {
-    hasLogined.value = !!localStorage.getItem('token')
-    if (hasLogined.value) {
-      fetchUserInfo()
-    }
+    hasLogined.value = true
+    fetchUserInfo()
   }
 )
 </script>

@@ -137,17 +137,17 @@ const handleSubmit = async () => {
     console.log(response)
     if (response.code === 0) {
       Message.success('密码修改成功')
-      // 清除token强制重新登录
-      localStorage.removeItem('token')
+      // 免登录模式下不跳转登录页
       setTimeout(() => {
-        router.push('/login')
+        router.go(-1)
       }, 1500)
     } else {
-      Message.warning(`密码修改失败: ${response.data.message}`)
+      Message.warning(`密码修改失败: ${response.data?.message || response.message}`)
     }
     
   } catch (error) {
-    
+    console.error('密码修改失败:', error)
+    Message.error(`密码修改失败: ${error.message || '未知错误'}`)
   } finally {
     loading.value = false
   }
