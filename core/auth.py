@@ -71,9 +71,10 @@ SECRET_KEY = _load_or_generate_secret_key()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(cfg.get("token_expire_minutes",30))
 
-# 免登录模式：设为 True 时，所有 API 自动以 admin 身份访问，无需 token
-# 强制设为 True 进行测试，后续可通过配置文件控制
-NO_AUTH = True  # cfg.get("no_auth", False)
+# 免登录模式：设为 true 时，所有 API 自动以 admin 身份访问，无需 token
+# 通过 config.yaml 中的 no_auth 配置项控制，默认关闭
+# 仅限个人/内网使用，生产环境请设为 false
+NO_AUTH = cfg.get("no_auth", False)
 
 class PasswordHasher:
     """自定义密码哈希器，替代passlib的CryptContext"""
@@ -471,7 +472,7 @@ def authenticate_ak(access_key: str, secret_key: str) -> Optional[dict]:
         if ak_record:
             ak_record.last_used_at = datetime.utcnow()
             session.commit()
-    except:
+    except Exception:
         if session:
             session.rollback()
     finally:
@@ -481,7 +482,7 @@ def authenticate_ak(access_key: str, secret_key: str) -> Optional[dict]:
     # 解析权限
     try:
         ak_permissions = json.loads(ak.permissions) if ak.permissions else []
-    except:
+    except (json.JSONDecodeError, TypeError):
         ak_permissions = []
     
     return {
@@ -537,8 +538,9 @@ async def get_current_user_or_ak(request: Request, token: str = Depends(oauth2_s
                 # 2. 尝试用户AK认证
                 user_info = authenticate_ak(ak, sk)
                 if user_info:
-                    return user_info
-        except:
+                    traceback.print_exc()
+                return user_info
+        except (json.JSONDecodeError, ValueError):
             pass
     
     # 回退到 JWT Token 认证
@@ -583,7 +585,7 @@ def list_user_aks(user_id: str) -> list:
             ak_permissions = []
             try:
                 ak_permissions = json.loads(ak.permissions) if ak.permissions else []
-            except:
+            except (json.JSONDecodeError, TypeError):
                 pass
             
             result.append({

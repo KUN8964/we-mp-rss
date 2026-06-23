@@ -872,7 +872,7 @@ class WeChatAPI:
         try:
             response = self.session.get(f"{self.home_url}?token={self.token}")
             return 'home' in response.url
-        except:
+        except (requests.exceptions.RequestException, Exception):
             return False
 
     def get_session_info(self) -> Dict[str, Any]:

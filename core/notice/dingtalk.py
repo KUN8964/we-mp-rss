@@ -1,6 +1,6 @@
 import requests
 import json
-def send_dingtalk_message(webhook_url, title, text, is_at_all=False, at_mobiles=[]):
+def send_dingtalk_message(webhook_url, title, text, is_at_all=False, at_mobiles=None):
     """
     发送Markdown格式消息
     
@@ -11,6 +11,8 @@ def send_dingtalk_message(webhook_url, title, text, is_at_all=False, at_mobiles=
     - is_at_all: 是否@所有人
     - at_mobiles: 要@的手机号列表
     """
+    if at_mobiles is None:
+        at_mobiles = []
     headers = {'Content-Type': 'application/json'}
     data = {
         "msgtype": "markdown",

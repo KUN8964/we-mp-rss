@@ -173,7 +173,7 @@ class WxGather:
             if r.status_code == 200:
                 text = r.text
                 text=self.remove_common_html_elements(text)
-        except:
+        except (requests.exceptions.RequestException, Exception):
             pass
         return text
     def Wait(self,min=10,max=60,tips:str=""):
@@ -342,7 +342,7 @@ class WxGather:
             mp_id=""
             try:
                 mp_id=self.articles[0]['mp_id']
-            except:
+            except (IndexError, KeyError, TypeError):
                 pass
             rss.clear_cache(mp_id=mp_id)  
         

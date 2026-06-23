@@ -49,7 +49,7 @@ class NodeStatus:
                 config = json.loads(node.sync_config)
                 self.max_capacity = config.get("max_capacity", 10)
                 self.feed_quota = config.get("feed_quota", {})
-            except:
+            except (json.JSONDecodeError, KeyError, TypeError):
                 pass
 
     @property

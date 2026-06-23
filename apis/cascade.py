@@ -168,7 +168,7 @@ async def list_nodes(
             if node.sync_config:
                 try:
                     node_data["sync_config"] = json.loads(node.sync_config)
-                except:
+                except (json.JSONDecodeError, TypeError):
                     node_data["sync_config"] = {}
             
             node_list.append(node_data)
@@ -448,7 +448,7 @@ async def heartbeat(
         try:
             body = await request.json()
             callback_url = body.get("callback_url") if body else None
-        except:
+        except (json.JSONDecodeError, TypeError):
             pass
         
         if auth_header.startswith("AK-SK "):

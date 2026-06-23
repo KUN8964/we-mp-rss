@@ -70,9 +70,17 @@ app = FastAPI(
 )
 
 # CORS配置
+# allow_credentials=True 时 allow_origins 不能为 ["*"]，必须指定具体域名
+# 默认允许本地开发和常见端口，生产环境通过环境变量 CORS_ORIGINS 配置
+import os as _os
+_cors_origins_raw = _os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://localhost:5173,http://localhost:8001,http://127.0.0.1:8001"
+)
+_cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

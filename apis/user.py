@@ -76,7 +76,7 @@ async def get_user_list(
                 try:
                     import json
                     permissions = json.loads(user.permissions) if isinstance(user.permissions, str) else user.permissions
-                except:
+                except (json.JSONDecodeError, TypeError):
                     permissions = []
             
             user_list.append({

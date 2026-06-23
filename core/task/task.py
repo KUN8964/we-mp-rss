@@ -99,7 +99,7 @@ class TaskScheduler:
                             start, end = match[0]
                             step = random.randint(int(start), int(end))
                             field = field.replace(f"{start}~{end}", str(step))
-                    except:
+                    except (ValueError, Exception):
                         pass
                     return field
 

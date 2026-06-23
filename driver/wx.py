@@ -524,7 +524,7 @@ class Wx:
                         src = await img.get_attribute("src")
                         if src:
                             print(f"   img[{i}]: {src[:100]}")
-                    except:
+                    except Exception:
                         pass
                 raise Exception("未找到二维码图片元素")
             
@@ -740,7 +740,7 @@ class Wx:
     def Clean(self):
         try:
             os.remove(self.wx_login_file)
-        except:
+        except (FileNotFoundError, OSError):
             pass
         finally:
            pass
@@ -759,8 +759,21 @@ class Wx:
             return False
             
     def check_lock(self, timeout: int = 300) -> bool:
-        if not os.path.exists(self.wx_login_url):
+        """检查锁文件是否存在且未过期"""
+        if not os.path.exists(self.lock_file_path):
             return False
+        try:
+            with open(self.lock_file_path, 'r') as f:
+                content = f.read().strip()
+            parts = content.split('|')
+            if len(parts) >= 2:
+                lock_time = float(parts[1])
+                if time.time() - lock_time > timeout:
+                    # 锁已过期，强制释放
+                    self._force_release_lock()
+                    return False
+        except (ValueError, IOError):
+            pass
         return True
     def set_lock(self):
         """创建锁定文件，写入当前进程PID和时间戳"""

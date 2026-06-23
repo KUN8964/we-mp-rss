@@ -217,11 +217,13 @@ const routes = [
   },
   {
     path: '/login',
-    redirect: '/'
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
   },
   {
     path: '/forgot-password',
-    redirect: '/'
+    name: 'ForgotPassword',
+    component: () => import('@/views/ForgotPassword.vue'),
   },
   {
         path: '/reader',
@@ -235,8 +237,43 @@ const router = createRouter({
   routes
 })
 
-// 免登录模式：直接放行所有路由
-router.beforeEach(async (to, from, next) => {
+import { getToken } from '@/utils/auth'
+import { Message } from '@arco-design/web-vue'
+
+// 路由认证守卫：检查 token 是否存在
+// 免登录模式下后端会自动处理无 token 请求，此处仅对敏感路由做前端校验
+router.beforeEach(async (to, _from, next) => {
+  const token = getToken()
+  
+  // 登录页和找回密码页始终可访问
+  if (to.name === 'Login' || to.name === 'ForgotPassword') {
+    next()
+    return
+  }
+
+  // 若无 token，尝试静默请求后端用户信息来决定是否需要登录
+  if (!token) {
+    try {
+      const { default: http } = await import('@/api/http')
+      const res: any = await http.get('/wx/user/info')
+      // 后端返回了用户信息，说明免登录模式生效，放行
+      if (res?.username) {
+        next()
+        return
+      }
+    } catch (_e) {
+      // 后端拒绝了未认证请求，需要登录
+      // 对于公开页面（首页），仍然放行但后端会自动拒绝未认证 API 调用
+    }
+
+    // 需要权限的页面跳转到登录页
+    if (to.meta?.permissions) {
+      Message.warning('请先登录')
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+  }
+  
   next()
 })
 

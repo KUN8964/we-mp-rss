@@ -8,7 +8,7 @@ class KeyStore:
     redis_key = "werss:key_store:cookies"
 
     def __init__(self):
-        self.store = FileCrypto(cfg.get("safe.lic_key", "store.csol.store.werss"))
+        self.store = FileCrypto(cfg.get("safe.lic_key", ""))
 
     def save(self, text):
         items = []
@@ -47,7 +47,7 @@ class KeyStore:
             items = json.loads(text)
             new_items = self._filter_items(items)
             return new_items
-        except:
+        except (json.JSONDecodeError, FileNotFoundError, UnicodeDecodeError, Exception):
             return ""
 
     def _filter_items(self, items):

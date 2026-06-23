@@ -23,8 +23,13 @@ class Config:
         self._init_encryption()
         
     def _init_encryption(self):
-        """初始化加密设置"""
-        key = os.getenv('ENCRYPTION_KEY', 'store.csol.store.werss')  # 默认密钥
+        """初始化加密设置，密钥仅从环境变量 ENCRYPTION_KEY 读取"""
+        key = os.getenv('ENCRYPTION_KEY')
+        if not key:
+            if self.encryption_enabled:
+                print("警告: 加密已启用但未设置 ENCRYPTION_KEY 环境变量，加密功能将禁用")
+            self.encryption_enabled = False
+            return
         if self.encryption_enabled:
             try:
                 self.crypto = FileCrypto(key)
@@ -98,7 +103,7 @@ class Config:
                         default_value = match.group(2)
                         return os.getenv(var_name, default_value) if default_value is not None else os.getenv(var_name, '')
                     return pattern.sub(replace_match, data)
-                except:
+                except (re.error, Exception):
                     return data
             return data
     def get_config(self):
@@ -146,7 +151,7 @@ class Config:
             if '.' in v and all(part.isdigit() for part in v.split('.') if part):
                 return float(v)
             return v
-        except:
+        except (ValueError, AttributeError, Exception):
             return v
     def get(self,key,default:any=None):
         _config=self.replace_env_vars(self.config)

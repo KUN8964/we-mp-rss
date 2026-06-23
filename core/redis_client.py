@@ -75,7 +75,7 @@ class RedisClient:
             try:
                 self._client.ping()
                 return True
-            except:
+            except Exception:
                 pass
         
         # 重置客户端

@@ -62,7 +62,7 @@ async def get_filter_rules(
             try:
                 if rule.mp_id:
                     mp_ids = json.loads(rule.mp_id) if rule.mp_id.startswith('[') else [rule.mp_id]
-            except:
+            except (json.JSONDecodeError, TypeError):
                 mp_ids = [rule.mp_id] if rule.mp_id else []
 
             rules_list.append({
@@ -127,7 +127,7 @@ async def get_filter_rule(
         try:
             if rule.mp_id:
                 mp_ids = json.loads(rule.mp_id) if rule.mp_id.startswith('[') else [rule.mp_id]
-        except:
+        except (json.JSONDecodeError, TypeError):
             mp_ids = [rule.mp_id] if rule.mp_id else []
 
         return success_response(data={
@@ -289,7 +289,7 @@ async def get_active_rules_for_mp(
             # 解析 mp_id JSON，检查是否包含指定的 mp_id 或者是全局规则（空数组）
             try:
                 mp_ids = json.loads(rule.mp_id) if rule.mp_id and rule.mp_id.startswith('[') else ([rule.mp_id] if rule.mp_id else [])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 mp_ids = [rule.mp_id] if rule.mp_id else []
 
             # 匹配条件：mp_id 在列表中，或者是全局规则（空数组）

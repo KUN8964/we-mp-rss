@@ -104,7 +104,7 @@ token_expire_minutes: ${TOKEN_EXPIRE_MINUTES:-4320}
 
 # 免登录模式：设为 true 时，前端无需登录，后端自动以 admin 身份处理所有请求
 # 仅限个人/内网使用，生产环境请设为 false
-no_auth: true
+no_auth: ${NO_AUTH:-true}
 
 cache:
   #缓存目录，默认为./data/cache
