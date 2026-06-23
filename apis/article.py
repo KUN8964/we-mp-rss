@@ -87,6 +87,18 @@ async def _run_refresh_article_task(task_id: str, article_id: str):
             })
             return
 
+        # 检测 JS 空壳：如果抓到的内容全部是 JS 代码无实际文字，标记为失败
+        if fetched_content and fetched_content != "DELETED":
+            from core.article_content import _is_js_shell
+            if _is_js_shell(fetched_content):
+                _set_refresh_task(task_id, {
+                    "task_id": task_id,
+                    "article_id": article_id,
+                    "status": "failed",
+                    "message": "文章内容为JS空壳，正文未成功渲染，请稍后重试"
+                })
+                return
+
         article.title = fetched.get("title") or article.title
         article.url = target_url
         article.publish_time = fetched.get("publish_time") or article.publish_time
