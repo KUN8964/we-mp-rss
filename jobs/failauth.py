@@ -1,8 +1,11 @@
 from core.print import print_warning, print_info
-from driver.base import WX_API
+from core.wx_service import (
+    get_qr_code_with_callback,
+    get_qr_code_url,
+    get_qr_image_exists,
+)
 from core.config import cfg
 from jobs.notice import sys_notice
-from driver.success import Success
 from tools.base64_tools import image_to_base64
 import time
 
@@ -23,7 +26,8 @@ def send_wx_code(title: str = "", url: str = ""):
 
     if cfg.get("server.send_code", False):
         # send_code=True: 尝试获取二维码，通过回调发送含二维码的通知
-        WX_API.GetCode(Notice=CallBackNotice, CallBack=Success)
+        from driver.success import Success
+        get_qr_code_with_callback(callback=Success, notice=CallBackNotice)
     else:
         # send_code=False: 直接发送不含二维码的文字通知
         text += "- 请手动访问系统进行扫码登录"
@@ -52,13 +56,13 @@ def CallBackNotice(data=None, ext_data=None):
             print_warning(f"发送二维码获取失败通知失败: {e}")
         return
 
-    img_path = WX_API.QRcode()['code']
+    img_path = get_qr_code_url()
     rss_domain = str(cfg.get("rss.base_url", ""))
     url = rss_domain + str(img_path)
     url = image_to_base64("./static/wx_qrcode.png")
     text = f"- 服务名：{cfg.get('server.name', '')}\n"
     text += f"- 发送时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}"
-    if WX_API.GetHasCode():
+    if get_qr_image_exists():
         text += f"![描述]({url})"
         text += f"\n- 请使用微信扫描二维码进行授权"
     sys_notice(text, str(cfg.get("server.code_title", "WeRss授权过期,扫码授权")))

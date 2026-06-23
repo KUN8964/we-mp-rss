@@ -14,8 +14,8 @@ class MpsAppMsg(WxGather):
     # 重写 content_extract 方法
     def content_extract(self,  url):
         try:
-            from driver.wxarticle import Web as App
-            r = App.get_article_content(url)
+            from core.wx_service import get_article_content_sync as _get_content
+            r = _get_content(url)
             if r!=None:
                 text = r.get("content","")
                 # text=self.remove_common_html_elements(text)

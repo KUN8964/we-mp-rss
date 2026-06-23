@@ -78,7 +78,9 @@ def getLoginInfo():
     from driver.token import _get_token_data
     return _get_token_data()
 
-def Success_Msg(data:dict,ext_data:dict={}):
+def Success_Msg(data: dict, ext_data: dict = None):
+    if ext_data is None:
+        ext_data = {}
     from jobs.notice import sys_notice
     from core.config import cfg
     text="# 授权成功\n"
@@ -88,10 +90,12 @@ def Success_Msg(data:dict,ext_data:dict={}):
     text+=f"- 有效时间: {data['expiry']['expiry_time']}\n"
     
     sys_notice(text, str(cfg.get("server.code_title","WeRss授权完成")))
-def Success(data:dict,ext_data:dict={}):
+def Success(data: dict, ext_data: dict = None):
+    if ext_data is None:
+        ext_data = {}
     if data != None:
             # print("\n登录结果:")
-            if ext_data is not {}:
+            if ext_data:
                 print_success(f"名称：{ext_data['wx_app_name']}")
             if data['expiry'] !=None:
                 Success_Msg(data,ext_data)

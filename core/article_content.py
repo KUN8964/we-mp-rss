@@ -43,9 +43,9 @@ def build_article_url(article: Any) -> str:
 
 
 def _fetch_with_web(url: str) -> Tuple[str, Any]:
-    from driver.wxarticle import Web
+    from core.wx_service import get_article_content_sync
 
-    result = Web.get_article_content(url) or {}
+    result = get_article_content_sync(url) or {}
     return (result.get("content") or "").strip(), result
 
 
@@ -168,7 +168,6 @@ def sync_article_content(
             print_info(f"article {article.id} marked as DELETED (violation) via {mode}")
             return True, "violation"
         
-        from driver.wxarticle import Web
         from tools.fix import fix_html
 
         article.content = content

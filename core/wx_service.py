@@ -99,3 +99,52 @@ def get_web_viewer():
     """获取文章 Web 展示器类（提供静态方法 get_image_url, proxy_images, get_description）"""
     from driver.wxarticle import Web
     return Web
+
+
+# ============================
+# 登录状态管理
+# ============================
+
+def set_wx_login_status(status: bool):
+    """设置微信登录状态"""
+    from driver.success import setStatus
+    setStatus(status)
+
+
+def can_get_wx_token() -> Any:
+    """检查是否可以获取 Token"""
+    from driver.success import CanGetToken
+    return CanGetToken
+
+
+# ============================
+# 文章内容操作
+# ============================
+
+def get_article_content_sync(url: str) -> dict:
+    """获取文章内容（同步包装器）"""
+    from driver.wxarticle import Web
+    return Web.get_article_content(url)
+
+
+def clean_article_html(html_content: str) -> str:
+    """清洗文章 HTML"""
+    from driver.wxarticle import Web
+    return Web.clean_article_content(str(html_content))
+
+
+# ============================
+# 二维码/登录回调
+# ============================
+
+def get_qr_code_with_callback(callback=None, notice=None) -> dict:
+    """生成微信登录二维码，带自定义回调"""
+    from driver.wx import WX_API
+    return WX_API.GetCode(CallBack=callback, Notice=notice)
+
+
+def get_qr_code_url() -> str:
+    """获取二维码图片 URL"""
+    from driver.wx import WX_API
+    qr = WX_API.QRcode()
+    return str(qr.get('code', '')) if qr else ''

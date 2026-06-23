@@ -10,8 +10,13 @@ from core.models.feed import Feed
 from .cfg import cfg,wx_cfg
 from core.print import print_error,print_info, print_warning, print_success
 from core.rss import RSS
-from driver.success import setStatus,CanGetToken
-from driver.wxarticle import Web
+from core.wx_service import (
+    set_wx_login_status as _setStatus,
+    get_web_viewer,
+    get_article_content_sync,
+    clean_article_html,
+)
+Web = get_web_viewer()
 from core.wait import Wait
 import random
 # 定义一些常见的 User-Agent
@@ -78,7 +83,7 @@ class WxGather:
         self.get_token()
     def get_token(self):
         cfg.reload()
-        from driver.token import get as get_token_val
+        from core.wx_service import get_wx_token as get_token_val
         self.Gather_Content=cfg.get('gather.content',False)
         self.cookies = get_token_val('cookie', '')
         self.token=get_token_val('token','')
@@ -184,7 +189,7 @@ class WxGather:
     def FillBack(self,CallBack=None,data=None,Ext_Data=None):
         if CallBack is not None:
             if data is not  None:
-                setStatus(True)
+                _setStatus(True)
                 from core.models import Article
                 from datetime import datetime
                 # 文章基础属性
@@ -322,7 +327,7 @@ class WxGather:
             # TaskQueue.clear_queue()  # 已注释：避免微信认证失效时清空队列
             from jobs.failauth import send_wx_code
             import threading
-            setStatus(False)
+            _setStatus(False)
             threading.Thread(target=send_wx_code,args=(f"公众号平台登录失效,请重新登录",)).start()
             # send_wx_code(f"公众号平台登录失效,请重新登录")
             raise Exception(error)
@@ -380,7 +385,7 @@ class WxGather:
                 Wait(tips="当前环境异常，完成验证后即可继续访问")
                 html_content=""
         else:
-            html_content=Web.clean_article_content(html_content)
+            html_content = clean_article_html(html_content)
         return html_content
 
     # 更新公众号更新状态

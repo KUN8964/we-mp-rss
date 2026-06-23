@@ -219,7 +219,7 @@ class Db:
             return data
         except Exception as e:
             print(f"Failed to fetch Feed: {e}")
-            return e # type: ignore   
+            return []   
         finally:
             if session is not None:
                 session.close()
@@ -232,7 +232,7 @@ class Db:
             return session.query(Feed).filter(Feed.status == 1).all()
         except Exception as e:
             print(f"Failed to fetch Feed: {e}")
-            return e # type: ignore
+            return []
         finally:
             if session is not None:
                 session.close()
@@ -246,7 +246,7 @@ class Db:
             return data
         except Exception as e:
             print(f"Failed to fetch Feed: {e}")
-            return e # type: ignore
+            return []
         finally:
             if session is not None:
                 session.close()
@@ -259,7 +259,7 @@ class Db:
             return data
         except Exception as e:
             print(f"Failed to fetch Feed: {e}")
-            return e # type: ignore
+            return []
         finally:
             if session is not None:
                 session.close()

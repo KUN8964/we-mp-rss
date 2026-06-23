@@ -538,8 +538,7 @@ async def get_current_user_or_ak(request: Request, token: str = Depends(oauth2_s
                 # 2. 尝试用户AK认证
                 user_info = authenticate_ak(ak, sk)
                 if user_info:
-                    traceback.print_exc()
-                return user_info
+                    return user_info
         except (json.JSONDecodeError, ValueError):
             pass
     
@@ -877,5 +876,4 @@ def send_reset_code_notice(username: str, code: str) -> bool:
         return True
     except Exception as e:
         print_error(f"发送验证码通知失败: {str(e)}")
-        raise e
-        return False
+        raise

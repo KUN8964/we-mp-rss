@@ -57,10 +57,10 @@ def search_Biz(kw:str="",limit=5,offset=0):
 from bs4 import BeautifulSoup
 #通过公众号接口获取公众号文章列表
 def get_Articles(faker_id:str):
-    from driver.token import get as get_val
+    from core.wx_service import get_wx_token
     headers = {
-        "Cookie": get_val("cookie"),
-        "User-Agent": get_val("user_agent")
+        "Cookie": get_wx_token("cookie"),
+        "User-Agent": get_wx_token("user_agent")
     }
     params = {
         "sub": "list",
