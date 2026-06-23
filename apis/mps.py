@@ -5,7 +5,7 @@ from fastapi.background import BackgroundTasks
 from core.auth import get_current_user_or_ak
 from core.db import DB
 from core.wx import search_Biz
-from driver.wx import Wx
+from core.wx_service import get_article_fetcher as _get_fetcher
 from .base import success_response, error_response
 from datetime import datetime
 from core.config import cfg
@@ -15,10 +15,10 @@ from core.models.base import DATA_STATUS
 from core.cache import clear_cache_pattern
 import io
 import os
-from jobs.article import UpdateArticle
-from driver.wxarticle import WXArticleFetcher
 import threading
 from uuid import uuid4
+from jobs.article import UpdateArticle
+from core.cache import clear_cache_pattern
 router = APIRouter(prefix=f"/mps", tags=["公众号管理"])
 # import core.db as db
 # UPDB=db.Db("数据抓取")
@@ -94,7 +94,7 @@ async def _run_add_featured_article_task(task_id: str, url: str):
         if not target_url:
             raise ValueError("请输入文章链接")
 
-        fetcher = WXArticleFetcher()
+        fetcher = _get_fetcher()
         info = await fetcher.get_article_content(target_url)
         if not info or info.get("fetch_error"):
             raise ValueError(info.get("fetch_error") or "文章抓取失败，请检查链接或登录状态")
@@ -423,7 +423,7 @@ async def get_mp_by_article(
     current_user: dict = Depends(get_current_user_or_ak)
 ):
     try:
-        info = await WXArticleFetcher().get_article_content(url)
+        info = await _get_fetcher().get_article_content(url)
         
         if not info:
             raise HTTPException(

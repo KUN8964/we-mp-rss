@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 from core.db import DB
 from core.models.feed import Feed
 from core.models.article import Article
-from driver.wxarticle import Web
+from core.wx_service import get_web_viewer as _get_web
 from datetime import datetime
 from core.models.tags import Tags
 import json
@@ -41,7 +41,7 @@ def get_mps_view(
             feed_data = {
                 "id": feed.id,
                 "name": feed.mp_name,
-                "cover": Web.get_image_url(feed.mp_cover) if feed.mp_cover else "",
+                "cover": _get_web().get_image_url(feed.mp_cover) if feed.mp_cover else "",
                 "intro": feed.mp_intro,
                 "mp_count": 1,  # Feed 本身就是一个公众号
                 "article_count": article_count,
@@ -124,7 +124,7 @@ def get_tags_view(
             tag_data = {
                 "id": tag.id,
                 "name": tag.name,
-                "cover": Web.get_image_url(tag.cover) if tag.cover else "",
+                "cover": _get_web().get_image_url(tag.cover) if tag.cover else "",
                 "intro": tag.intro,
                 "mp_count": mp_count,
                 "article_count": article_count,
@@ -180,4 +180,4 @@ def process_content_images(content: str) -> str:
     """处理文章内容中的图片链接，添加前缀"""
     if not content:
         return content
-    return Web.proxy_images(content,isProxy=False)
+    return _get_web().proxy_images(content, isProxy=False)

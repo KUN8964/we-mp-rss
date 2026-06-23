@@ -6,10 +6,14 @@ from fastapi import APIRouter,Depends
 from typing import Dict, Any
 from core.auth import get_current_user_or_ak
 from .base import success_response, error_response
-from driver.token import wx_cfg
+from core.wx_service import (
+    get_wx_cfg,
+    get_wx_login_status,
+    get_wx_login_info,
+    get_wx_token,
+)
 from core.config import cfg
 from jobs.mps import TaskQueue
-from driver.success import getLoginInfo,getStatus
 router = APIRouter(prefix="/sys", tags=["系统信息"])
 def get_docker_version():
         try:
@@ -101,7 +105,7 @@ async def get_system_info(
     """
     try:
       
-        from driver.token import get as get_val
+        from core.wx_service import get_wx_token as _get_val
         # 获取系统信息
         system_info = {
             'os': {
@@ -122,10 +126,10 @@ async def get_system_info(
             'latest_version':LATEST_VERSION,
             'need_update':CORE_VERSION != LATEST_VERSION,
             "wx":{
-                'token':get_val('token',''),
-                'expiry_time':get_val('expiry.expiry_time','') if getStatus() else "",
-                "info":getLoginInfo(),
-                "login":getStatus(),
+                'token': _get_val('token',''),
+                'expiry_time': _get_val('expiry.expiry_time','') if get_wx_login_status() else "",
+                "info": get_wx_login_info(),
+                "login": get_wx_login_status(),
             },
             "article":get_article_info(),
             'queue':TaskQueue.get_queue_info(),

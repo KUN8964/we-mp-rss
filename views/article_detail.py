@@ -13,7 +13,7 @@ from core.models.tags import Tags
 from apis.base import format_search_kw
 from core.lax.template_parser import TemplateParser
 from views.config import base
-from driver.wxarticle import Web
+from core.wx_service import get_web_viewer as _get_web
 from core.cache import cache_view, clear_cache_pattern, data_cache
 from sqlalchemy.orm import defer
 # 创建路由器
@@ -84,8 +84,8 @@ async def article_detail_view(
             rel_data = {
                 "id": rel_article.id,
                 "title": rel_article.title,
-                "description": rel_article.description or Web.get_description(rel_article.content),
-                "pic_url": Web.get_image_url(rel_article.pic_url),
+                "description": rel_article.description or _get_web().get_description(rel_article.content),
+                "pic_url": _get_web().get_image_url(rel_article.pic_url),
                 "publish_time": datetime.fromtimestamp(rel_article.publish_time).strftime('%Y-%m-%d %H:%M') if rel_article.publish_time else ""
             }
             related_list.append(rel_data)
@@ -108,7 +108,7 @@ async def article_detail_view(
         article_data = {
             "id": article.id,
             "title": article.title,
-            "description": article.description or Web.get_description(article.content),
+            "description": article.description or _get_web().get_description(article.content),
             "pic_url": article.pic_url,
             "url": article.url,
             "show_type": article.show_type,

@@ -19,15 +19,19 @@ from core.auth import (
 )
 from .ver import API_VERSION
 from .base import success_response, error_response
-from driver.base import WX_API
+from core.wx_service import (
+    get_qr_code as _wx_get_qr_code,
+    get_qr_image_exists,
+    get_qr_status,
+    close_wx_session,
+    switch_wechat_account,
+)
 from core.config import set_config, cfg
 from pydantic import BaseModel
 from typing import Optional
 
 router = APIRouter(prefix=f"/auth", tags=["认证"])
-from driver.success import Success
-from driver.wx_api import get_qr_code #通过API登录
-from driver.wx import WX_API
+
 def ApiSuccess(data):
     if data != None:
             print("\n登录结果:")
@@ -39,19 +43,18 @@ def ApiSuccess(data):
 @router.get("/qr/code", summary="获取登录二维码")
 async def get_qrcode(current_user=Depends(get_current_user)):
 
-    code_url=WX_API.GetCode(Success)
+    code_url = _wx_get_qr_code()
     return success_response(code_url)
 @router.get("/qr/image", summary="获取登录二维码图片")
 async def qr_image(current_user=Depends(get_current_user)):
-    return success_response(WX_API.GetHasCode())
+    return success_response(get_qr_image_exists())
 
 @router.get("/qr/status",summary="获取扫描状态")
 async def qr_status(current_user=Depends(get_current_user)):
-    #  from driver.success import  getStatus
-     return success_response(WX_API.QrStatus())    
+     return success_response(get_qr_status())    
 @router.get("/qr/over",summary="扫码完成")
 async def qr_success(current_user=Depends(get_current_user)):
-     return success_response(await WX_API.Close())    
+     return success_response(await close_wx_session())    
 @router.post("/login", summary="用户登录")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
@@ -439,7 +442,7 @@ async def switch_wechat_account(current_user: dict = Depends(get_current_user)):
 
     try:
         # 调用切换账号方法（异步）
-        result = await WX_API.switch_account()
+        result = await switch_wechat_account()
         return success_response(result, "切换账号成功" if result else "切换账号失败")
     except HTTPException:
         raise
