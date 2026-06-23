@@ -128,7 +128,21 @@ def sync_article_content(
                 session.commit()
                 print_warning(f"article {article.id} fetch failed (temp error: {fetch_error}), not deleted")
             return True, mode
-
+        
+        # 检测违规文章（content 包含违规提示但未被标记为 DELETED）
+        if content and any(kw in content for kw in ["违规无法查看", "违反《", "接相关投诉"]):
+            print_warning(f"article {article.id} detected as VIOLATION (content contains violation keywords)")
+            article.content = ""
+            article.content_html = ""
+            article.status = DATA_STATUS.DELETED
+            article.has_content = 0
+            if hasattr(article, 'fetch_error'):
+                setattr(article, 'fetch_error', "该内容因违规无法查看")
+            session.commit()
+            session.refresh(article)
+            print_info(f"article {article.id} marked as DELETED (violation) via {mode}")
+            return True, "violation"
+        
         from driver.wxarticle import Web
         from tools.fix import fix_html
 

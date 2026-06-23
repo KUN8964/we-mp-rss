@@ -1122,7 +1122,8 @@ const viewArticle = async (record: any, action_type: number = 0) => {
   loading.value = true
   try {
     // console.log(record)
-    const article = await getArticleDetail(record.id,action_type)
+    const response = await getArticleDetail(record.id,action_type)
+    const article = response.data  // 提取 data 字段
     currentArticle.value = {
       id: article.id,
       title: article.title,

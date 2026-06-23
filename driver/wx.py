@@ -25,7 +25,8 @@ class Wx:
     isLOCK=False
     WX_LOGIN="https://mp.weixin.qq.com/"
     WX_HOME="https://mp.weixin.qq.com/cgi-bin/home"
-    wx_login_url="static/wx_qrcode.png"
+    wx_login_url="/static/wx_qrcode.png"  # URL 路径（返回给前端）
+    wx_login_file=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static/wx_qrcode.png")  # 文件系统路径（保存图片，对应后端 /static 挂载目录）
     lock_file_path="data/lock.lock"
     CallBack=None
     Notice=None
@@ -43,7 +44,7 @@ class Wx:
         pass
 
     def GetHasCode(self):
-        if os.path.exists(self.wx_login_url):
+        if os.path.exists(self.wx_login_file):
             return True
         return False
     async def extract_token_from_requests(self):
@@ -298,7 +299,7 @@ class Wx:
     wait_time=1
     def QRcode(self):
         return {
-            "code":f"/{self.wx_login_url}?t={(time.time())}",
+            "code":f"{self.wx_login_url}?t={int(time.time())}",
             "is_exists":self.GetHasCode(),
         }
     async def refresh_task(self):
@@ -429,9 +430,9 @@ class Wx:
                     pass
     def isLock(self):             
         if self.isLock:
-            if os.path.exists(self.wx_login_url):
+            if os.path.exists(self.wx_login_file):
                 try:
-                    size=os.path.getsize(self.wx_login_url)
+                    size=os.path.getsize(self.wx_login_file)
                     return size>364
                 except Exception as e:
                     print(f"二维码图片获取失败: {str(e)}")
@@ -475,22 +476,86 @@ class Wx:
 
             # 等待页面完全加载
             print_info("正在加载登录页面...")
-            await page.wait_for_load_state("networkidle")
-
-            # 定位二维码区域
-            qr_tag = ".login__type__container__scan__qrcode"
-            # 获取二维码图片URL
-            qrcode = await page.query_selector(qr_tag)
-            code_src = await qrcode.get_attribute("src")
-            print("正在生成二维码图片...")
-            print(f"code_src:{code_src}")
-
-            # 使用Playwright截图功能（添加异常处理）
-            await qrcode.screenshot(path=self.wx_login_url)
-
-            print("二维码已保存为 wx_qrcode.png，请扫码登录...")
-            self.HasCode = True
-            if os.path.getsize(self.wx_login_url) <= 364:
+            try:
+                await page.wait_for_load_state("domcontentloaded", timeout=15000)
+                print_info("✅ 页面 DOM 已加载")
+            except Exception as e:
+                print_warning(f"⚠️ 等待 DOM 加载超时: {e}，继续执行...")
+            
+            # 等待一下让 JavaScript 执行
+            await asyncio.sleep(3)
+            print_info("✅ 开始查找二维码元素...")
+            
+            # 尝试多个选择器定位二维码
+            qr_selectors = [
+                ".login__type__container__scan__qrcode",
+                ".qrcode img",
+                "img[src*='qrcode']",
+                ".login-box img",
+                "img"
+            ]
+            
+            qrcode = None
+            code_src = None
+            
+            for selector in qr_selectors:
+                try:
+                    print(f"🔍 尝试选择器: {selector}")
+                    element = await page.query_selector(selector)
+                    if element:
+                        src = await element.get_attribute("src")
+                        if src and "qrcode" in src:
+                            qrcode = element
+                            code_src = src
+                            print(f"✅ 找到二维码元素: {selector}")
+                            print(f"   code_src: {code_src}")
+                            break
+                except Exception as e:
+                    print_warning(f"⚠️ 选择器 {selector} 失败: {e}")
+                    continue
+            
+            if not qrcode or not code_src:
+                # 调试：打印页面所有 img 元素
+                print_warning("⚠️ 未找到二维码元素，打印页面所有 img 元素...")
+                imgs = await page.query_selector_all("img")
+                print(f"   页面共有 {len(imgs)} 个 img 元素")
+                for i, img in enumerate(imgs[:10]):
+                    try:
+                        src = await img.get_attribute("src")
+                        if src:
+                            print(f"   img[{i}]: {src[:100]}")
+                    except:
+                        pass
+                raise Exception("未找到二维码图片元素")
+            
+            print("正在生成二维码图片...", flush=True)
+            print(f"code_src:{code_src}", flush=True)
+            
+            # 使用 Playwright 截图功能（这是唯一可靠的方法）
+            try:
+                print("正在使用 Playwright 截图二维码...", flush=True)
+                
+                # 确保目录存在
+                os.makedirs(os.path.dirname(self.wx_login_file), exist_ok=True)
+                
+                # 等待一下让二维码完全渲染
+                await asyncio.sleep(2)
+                
+                # 直接截图（ElementHandle.screenshot() 是异步方法）
+                print(f"正在截图到: {self.wx_login_file}", flush=True)
+                await qrcode.screenshot(path=self.wx_login_file)
+                
+                # 验证文件是否生成
+                if os.path.exists(self.wx_login_file) and os.path.getsize(self.wx_login_file) > 364:
+                    print(f"✅ 二维码已保存，大小: {os.path.getsize(self.wx_login_file)} bytes", flush=True)
+                    print("✅ 二维码已保存为 wx_qrcode.png，请扫码登录...", flush=True)
+                    self.HasCode = True
+                else:
+                    raise Exception(f"截图失败，文件大小异常: {os.path.getsize(self.wx_login_file) if os.path.exists(self.wx_login_file) else '文件不存在'}")
+            except Exception as screenshot_error:
+                print(f"❌ Playwright 截图失败: {screenshot_error}", flush=True)
+                raise Exception(f"二维码生成失败: {screenshot_error}")
+            if os.path.getsize(self.wx_login_file) <= 364:
                 raise Exception("二维码图片获取失败，请重新扫码")
             # 等待登录成功（检测二维码图片加载完成）
             print("等待扫码登录...")
@@ -674,7 +739,7 @@ class Wx:
         return rel
     def Clean(self):
         try:
-            os.remove(self.wx_login_url)
+            os.remove(self.wx_login_file)
         except:
             pass
         finally:
