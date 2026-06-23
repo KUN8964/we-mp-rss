@@ -90,8 +90,23 @@ class WXArticleFetcher:
 
                 page = controller.page
 
-                # 等待页面加载
+                # 等待页面加载 — 等待 #js_content 元素有实质内容（非 JS 代码空壳）
                 await asyncio.sleep(2)
+                
+                # 额外等待：确认 js_content 中的文本长度 > 500 才算正文加载完毕
+                max_wait = 30  # 最多等 30 秒
+                waited = 0
+                while waited < max_wait:
+                    try:
+                        text = await page.locator('#js_content').inner_text()
+                        if text and len(text.strip()) > 500:
+                            break
+                    except Exception:
+                        pass
+                    await asyncio.sleep(1)
+                    waited += 1
+                if waited >= max_wait:
+                    print_warning(f"内容加载超时：js_content 文本长度不足，可能为空壳捕获")
 
                 # 获取页面内容
                 body = await page.content()

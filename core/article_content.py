@@ -46,7 +46,26 @@ def _fetch_with_web(url: str) -> Tuple[str, Any]:
     from driver.wxarticle import Web
 
     result = Web.get_article_content(url) or {}
-    return (result.get("content") or "").strip(),result
+    return (result.get("content") or "").strip(), result
+
+
+def _is_js_shell(html_content: str) -> bool:
+    """检测 HTML 内容是否为 JS 空壳（没有实际文章文字，只有脚本代码）"""
+    if not html_content or len(html_content) < 100:
+        return False
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html_content, 'html.parser')
+        text_len = len(soup.get_text(strip=True))
+        scripts = soup.find_all('script')
+        script_len = sum(len(str(s)) for s in scripts)
+        total = len(html_content)
+        # 脚本占比 > 70% 或文字 < 100 字节 → 空壳
+        if script_len > total * 0.7 or text_len < 100:
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def _fetch_with_api(url: str) -> Tuple[str, Any]:
@@ -68,6 +87,12 @@ def fetch_article_content(url: str, preferred_mode: str | None = None) -> Tuple[
             print(result)
             article_type = result.get("article_type", "")
             fetch_error = result.get("fetch_error", "")
+
+            # 检测 JS 空壳：如果抓到的内容是纯 JS 代码而非文章文字，跳过此模式
+            if content and _is_js_shell(content):
+                print_warning(f"fetch article content in {current_mode} mode returned JS shell, trying next mode")
+                continue
+
         except Exception as exc:
             print_warning(f"fetch article content failed in {current_mode} mode: {exc}")
             continue
